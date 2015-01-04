@@ -30,10 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
 #include "SFE_MicroOLED.h"
-#include <SPI.h>
-#include <Wire.h>
-
-#define I2C_FREQ 400000L	// I2C Frequency is 400kHz (fast as possible)
 
 /** \brief Set Up SPI Interface
 
@@ -41,18 +37,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 **/
 void MicroOLED::spiSetup()
 {
-	// Gather the CS pin's PORT, PIN, and DDR registers. Writing
-	// these directly will make things much faster.
-	ssport		= portOutputRegister(digitalPinToPort(csPin));
-	sspinmask	= digitalPinToBitMask(csPin);
-	ssreg		= portModeRegister(digitalPinToPort(csPin));
-	
-	// Initialize the pins:
-	pinMode(MOSI, OUTPUT);	// MOSI is an OUTPUT
-	pinMode(SCK, OUTPUT);	// SCK is an OUTPUT
-	pinMode(csPin, OUTPUT);	// CS is an OUTPUT
-	digitalWrite(csPin, HIGH);	// Start CS High
-	
 	// Initialize the SPI library:
 	SPI.setClockDivider(SPI_CLOCK_DIV2);	// Fastest SPI clock possible
 	SPI.setDataMode(SPI_MODE0);	// CPOL=0 and CPHA=0, SPI mode 0
@@ -68,112 +52,4 @@ void MicroOLED::spiSetup()
 void MicroOLED::spiTransfer(byte data)
 {
 	SPI.transfer(data);	
-}
-
-/** \brief Initialize the I2C Interface
-
-	This function initializes the I2C peripheral. It also sets up the
-	I2C clock frequency.
-**/
-void MicroOLED::i2cSetup()
-{
-	// Initialize Wire library (I2C)
-	Wire.begin();
-	
-	// SCL frequency = (F_CPU) / (16 + 2(TWBR) * (prescalar))
-	TWBR = ((F_CPU / I2C_FREQ) - 16) / 2;
-}
-
-/** \brief  Write a byte over I2C
-
-	Write a byte to I2C device _address_. The DC byte determines whether
-	the data being sent is a command or display data. Use either I2C_COMMAND
-	or I2C_DATA in that parameter. The data byte can be any 8-bit value.
-**/
-void MicroOLED::i2cWrite(byte address, byte dc, byte data)
-{
-	Wire.beginTransmission(address);
-	Wire.write(dc); // If data dc = 0, if command dc = 0x40
-	Wire.write(data);
-	Wire.endTransmission();
-}
-
-/** \brief Set up Parallel Interface
-
-	This function initializes all of the pins used in the
-	parallel interface.
-**/
-void MicroOLED::parallelSetup()
-{
-	// Gather the CS pin's PORT, PIN and DDR registers.
-	ssport		= portOutputRegister(digitalPinToPort(csPin));
-	sspinmask	= digitalPinToBitMask(csPin);
-	ssreg		= portModeRegister(digitalPinToPort(csPin));
-	
-	// Gather the WR pin's PORT, PIN and DDR registers.
-	wrport		= portOutputRegister(digitalPinToPort(wrPin));
-	wrpinmask	= digitalPinToBitMask(wrPin);
-	wrreg		= portModeRegister(digitalPinToPort(wrPin));
-	
-	// Gather the RD pin's PORT, PIN and DDR registers.
-	rdport		= portOutputRegister(digitalPinToPort(rdPin));
-	rdpinmask	= digitalPinToBitMask(rdPin);
-	rdreg		= portModeRegister(digitalPinToPort(rdPin));
-	
-	// Initialize WR, RD, CS and data pins as outputs.
-	pinMode(wrPin, OUTPUT);
-	digitalWrite(wrPin, HIGH);
-	pinMode(rdPin, OUTPUT);
-	digitalWrite(rdPin, HIGH);
-	pinMode(csPin, OUTPUT);
-	digitalWrite(csPin, HIGH);
-	for (int i=0; i<8; i++)
-		pinMode(dPins[i], OUTPUT);
-}
-
-/** \brief Write a byte over the parallel interface
-
-	This function will both set the DC pin, depending on whether a data or
-	command byte is being sent, and it will toggle the WR, RD and data pins
-	to send a byte.
-**/
-void MicroOLED::parallelWrite(byte data, byte dc)
-{
-	// Initial state: cs high, wr high, rd high
-	//digitalWrite(csPin, HIGH);
-	//digitalWrite(wrPin, HIGH);
-	//digitalWrite(rdPin, HIGH);
-	
-	// chip select high->low
-	digitalWrite(csPin, LOW);
-	//*ssport &= ~sspinmask;		// SS LOW
-	
-	// dc high or low
-	digitalWrite(dcPin, dc);
-	/*if (dc)
-		*dcport |= dcpinmask;	// DC HIGH
-	else
-		*dcport &= ~dcpinmask;  // DC pin LOW*/
-	
-	// wr high->low
-	digitalWrite(wrPin, LOW);
-	//*wrport &= ~wrpinmask;		// SS LOW
-	
-	// set data pins
-	for (int i=0; i<8; i++)
-	{
-		if (data & (1<<i))
-			digitalWrite(dPins[i], HIGH);
-		else
-			digitalWrite(dPins[i], LOW);
-	}
-	//PORTD = data;
-	
-	// wr low->high
-	digitalWrite(wrPin, HIGH);
-	//*wrport |= wrpinmask;	// SS HIGH
-		
-	// cs high
-	digitalWrite(csPin, HIGH);
-	//*ssport |= sspinmask;	// SS HIGH
 }

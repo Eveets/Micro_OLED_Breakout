@@ -32,16 +32,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SFE_MICROOLED_H
 #define SFE_MICROOLED_H
 
-#include <stdio.h>
-#include <Arduino.h>
-#include <avr/pgmspace.h>
+
+#include "application.h"
+
+#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+#define pgm_read_byte_near(addr) (*(const unsigned char *)(addr))
+#define pgm_read_word(addr) (*(const unsigned short *)(addr))
+#define pgm_read_word_near(addr) (*(const unsigned short *)(addr))
 
 #define swap(a, b) { uint8_t t = a; a = b; b = t; }
-
-#define I2C_ADDRESS_SA0_0 0b0111100
-#define I2C_ADDRESS_SA0_1 0b0111101
-#define I2C_COMMAND 0x00
-#define I2C_DATA 0x40
 
 #define BLACK 0
 #define WHITE 1
@@ -116,19 +115,13 @@ typedef enum CMD {
 } commCommand_t;
 
 typedef enum COMM_MODE{
-	MODE_SPI,
-	MODE_I2C,
-	MODE_PARALLEL
+	MODE_SPI
 } micro_oled_mode;
 
-class MicroOLED : public Print{
+class MicroOLED : public Print {
 public:
 	// Constructor(s)
 	MicroOLED(uint8_t rst, uint8_t dc, uint8_t cs);
-	MicroOLED(uint8_t rst, uint8_t dc);
-	MicroOLED(uint8_t rst, uint8_t dc, uint8_t cs, uint8_t wr, uint8_t rd, 
-			  uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3, 
-			  uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7);
 	
 	void begin(void);
 	virtual size_t write(uint8_t);
@@ -190,13 +183,8 @@ public:
 	
 private:
 	uint8_t csPin, dcPin, rstPin;
-	uint8_t wrPin, rdPin, dPins[8];
-	volatile uint8_t *wrport, *wrreg, *rdport, *rdreg;
-	uint8_t wrpinmask, rdpinmask;
+	uint8_t wrPin, rdPin;
 	micro_oled_mode interface;
-	byte i2c_address;
-	volatile uint8_t *ssport, *dcport, *ssreg, *dcreg;	// use volatile because these are fixed location port address
-	uint8_t mosipinmask, sckpinmask, sspinmask, dcpinmask;
 	uint8_t foreColor,drawMode,fontWidth, fontHeight, fontType, fontStartChar, fontTotalChar, cursorX, cursorY;
 	uint16_t fontMapWidth;
 	static const unsigned char *fontsPointer[];
@@ -204,9 +192,6 @@ private:
 	// Communication
 	void spiTransfer(byte data);
 	void spiSetup();
-	void i2cSetup();
-	void i2cWrite(byte address, byte control, byte data);
-	void parallelSetup();
-	void parallelWrite(byte data, byte dc);
 };
 #endif
+

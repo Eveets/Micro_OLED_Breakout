@@ -19,8 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef FONTLARGENUMBER_H
 #define FONTLARGENUMBER_H
 
-#include <avr/pgmspace.h>
-
 static const unsigned char fontlargenumber[] PROGMEM = {
 	// first row defines - FONTWIDTH, FONTHEIGHT, ASCII START CHAR, TOTAL CHARACTERS, FONT MAP WIDTH HIGH, FONT MAP WIDTH LOW (2,56 meaning 256)
 	12,48,48,11,1,32,
@@ -76,3 +74,4 @@ static const unsigned char fontlargenumber[] PROGMEM = {
 	0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 };
 #endif
+

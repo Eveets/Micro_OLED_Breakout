@@ -29,21 +29,22 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ******************************************************************************/
 
-#include <avr/pgmspace.h>
-#include <SFE_MicroOLED.h>
+#include "SFE_MicroOLED.h"
 
 // This fixed ugly GCC warning "only initialized variables can be placed into program memory area"
 #undef PROGMEM
 #define PROGMEM __attribute__((section(".progmem.data")))
 
 // Add header of the fonts here.  Remove as many as possible to conserve FLASH memory.
-#include <font5x7.h>
-#include <font8x16.h>
-#include <fontlargenumber.h>
-#include <7segment.h>
+#include "font5x7.h"
+#include "font8x16.h"
+#include "fontlargenumber.h"
+#include "7segment.h"
 
 // Change the total fonts included
 #define TOTALFONTS		4
+
+#define _BV(bit) (1 << (bit))
 
 // Add the font name as declared in the header file.  Remove as many as possible to conserve FLASH memory.
 const unsigned char *MicroOLED::fontsPointer[]={
@@ -128,43 +129,6 @@ MicroOLED::MicroOLED(uint8_t rst, uint8_t dc, uint8_t cs)
 	interface = MODE_SPI;	// Set interface mode to SPI
 }
 
-/** \brief MicroOLED Constructor -- I2C Mode
-
-	Setup the MicroOLED class, configure the display to be controlled via a
-	I2C interface.
-*/
-MicroOLED::MicroOLED(uint8_t rst, uint8_t dc)
-{
-	rstPin = rst;	// Assign reset pin to private class variable
-	interface = MODE_I2C;	// Set interface to I2C
-	// Set the I2C Address based on whether DC is high (1) or low (0).
-	// The pin is pulled low by default, so if it's not explicitly set to
-	// 1, just default to 0.
-	if (dc == 1)
-		i2c_address = I2C_ADDRESS_SA0_1;
-	else
-		i2c_address = I2C_ADDRESS_SA0_0;
-}
-
-/** \brief MicroOLED Constructor -- Parallel Mode
-
-	Setup the MicroOLED class, configure the display to be controlled via a
-	parallel interface.
-*/
-MicroOLED::MicroOLED(uint8_t rst, uint8_t dc, uint8_t cs, uint8_t wr, uint8_t rd, 
-					uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3, 
-					uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7)
-{
-	interface = MODE_PARALLEL;	// Set to parallel mode
-	// Assign pin parameters to private class variables.
-	rstPin = rst;
-	dcPin = dc;
-	csPin = cs;
-	wrPin = wr;
-	rdPin = rd;
-	dPins[0] = d0; dPins[1] = d1; dPins[2] = d2; dPins[3] = d3;
-	dPins[4] = d4; dPins[5] = d5; dPins[6] = d6; dPins[7] = d7;
-}
 
 /** \brief Initialisation of MicroOLED Library.
 
@@ -178,20 +142,12 @@ void MicroOLED::begin()
 	setDrawMode(NORM);
 	setCursor(0,0);
 
-	dcport	= portOutputRegister(digitalPinToPort(dcPin));
-	dcpinmask	= digitalPinToBitMask(dcPin);
-	dcreg	= portModeRegister(digitalPinToPort(dcPin));
-	
 	pinMode(dcPin, OUTPUT);
 	pinMode(rstPin, OUTPUT);
 	
 	// Set up the selected interface:
 	if (interface == MODE_SPI)
 		spiSetup();
-	else if (interface == MODE_I2C)
-		i2cSetup();
-	else if (interface == MODE_PARALLEL)
-		parallelSetup();
 	
 	// Display reset routine
 	pinMode(rstPin, OUTPUT);	// Set RST pin as OUTPUT
@@ -251,21 +207,14 @@ void MicroOLED::command(uint8_t c) {
 	
 	if (interface == MODE_SPI)
 	{
-		*dcport &= ~dcpinmask;	// DC pin LOW for a command
-		*ssport &= ~sspinmask;	// SS LOW to initialize transfer
-		spiTransfer(c);			// Transfer the command byte
-		*ssport |= sspinmask;	// SS HIGH to end transfer
-	}
-	else if (interface == MODE_I2C)
-	{	
-		// Write to our address, make sure it knows we're sending a
-		// command:
-		i2cWrite(i2c_address, I2C_COMMAND, c);
-	}
-	else if (interface == MODE_PARALLEL)
-	{
-		// Write the byte to our parallel interface. Set DC LOW.
-		parallelWrite(c, LOW);
+
+	digitalWrite(dcPin, LOW);
+	digitalWrite(csPin, LOW);
+        
+        spiTransfer(c);			// Transfer the command byte
+
+	    digitalWrite(csPin, HIGH);
+
 	}
 }
 
@@ -280,22 +229,10 @@ void MicroOLED::data(uint8_t c) {
 	
 	if (interface == MODE_SPI)
 	{
-		*dcport |= dcpinmask;	// DC HIGH for a data byte
-		
-		*ssport &= ~sspinmask;	// SS LOW to initialize SPI transfer
+    	digitalWrite(dcPin, HIGH);
+    	digitalWrite(csPin, LOW);
 		spiTransfer(c); 		// Transfer the data byte
-		*ssport |= sspinmask;	// SS HIGH to end SPI transfer
-	}
-	else if (interface == MODE_I2C)
-	{
-		// Write to our address, make sure it knows we're sending a
-		// data byte:
-		i2cWrite(i2c_address, I2C_DATA, c);
-	}
-	else if (interface == MODE_PARALLEL)
-	{
-		// Write the byte to our parallel interface. Set DC HIGH.
-		parallelWrite(c, HIGH);
+    	digitalWrite(csPin, HIGH);
 	}
 }
 
